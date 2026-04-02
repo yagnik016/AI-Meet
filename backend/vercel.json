@@ -1,18 +1,19 @@
 {
   "version": 2,
-  "name": "ai-meet-backend",
   "builds": [
     {
-      "src": "src/main.ts",
+      "src": "src/main.vercel.ts",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "src/main.ts"
+      "dest": "src/main.vercel.ts"
     }
   ],
+  "buildCommand": "prisma generate && tsc -p tsconfig.json",
+  "installCommand": "npm install",
   "env": {
     "NODE_ENV": "production"
   }

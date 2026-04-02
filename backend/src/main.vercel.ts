@@ -10,19 +10,14 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS
   app.enableCors({
     origin: process.env.FRONTEND_URL || '*',
     credentials: true,
   });
 
-  // Set global API prefix
   app.setGlobalPrefix('api');
-
-  // Enable validation
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  // Swagger setup
   const config = new DocumentBuilder()
     .setTitle('AI Meeting Platform API')
     .setDescription('API for AI-powered meeting intelligence platform')
@@ -37,15 +32,27 @@ async function bootstrap() {
   return app;
 }
 
-// Vercel serverless handler
 export default async function handler(req: any, res: any) {
-  const app = await bootstrap();
-  const httpAdapter = app.getHttpAdapter();
-  const instance = httpAdapter.getInstance();
-  return instance(req, res);
+  try {
+    // Health check endpoint
+    if (req.url === '/api/health') {
+      return res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+    }
+
+    const app = await bootstrap();
+    const httpAdapter = app.getHttpAdapter();
+    const instance = httpAdapter.getInstance();
+    return instance(req, res);
+  } catch (error) {
+    console.error('Serverless function error:', error);
+    return res.status(500).json({ 
+      error: 'Internal Server Error', 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
+    });
+  }
 }
 
-// For local development
 if (process.env.NODE_ENV !== 'production') {
   bootstrap().then(async (app) => {
     await app.listen(process.env.PORT ?? 3001);
