@@ -271,7 +271,7 @@ export default function AnalyticsPage() {
                     outerRadius={100}
                     dataKey="count"
                     nameKey="platform"
-                    label={({ platform, count }) => `${platform}: ${count}`}
+                    label={({ platform, count }: { platform: string; count: number }) => `${platform}: ${count}`}
                   >
                     {analytics.platformUsage.map((entry, index) => (
                       <Cell
