@@ -1,0 +1,301 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  password      String?   // For credentials auth
+  image         String?
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  meetings      Meeting[]
+  transcripts   Transcript[]
+  subscriptions Subscription[]
+  ownedTeams    Team[]    @relation("TeamOwner")
+  teamMembers   TeamMember[]
+  notifications Notification[]
+  comments      Comment[]
+  
+  @@map("users")
+}
+
+model Meeting {
+  id            String        @id @default(uuid())
+  title         String
+  description   String?
+  platform      MeetingPlatform // zoom, google_meet, teams, upload
+  platformMeetingId String?   // External meeting ID from platform
+  startTime     DateTime
+  endTime       DateTime?
+  duration      Int?          // in seconds
+  status        MeetingStatus @default(SCHEDULED)
+  recordingUrl  String?       // URL to stored recording
+  transcriptionStatus TranscriptionStatus @default(PENDING)
+  reminderSent10Min Boolean @default(false)
+  reminderSent1Hour Boolean @default(false)
+  
+  // Relations
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transcript    Transcript?
+  participants  Participant[]
+  actionItems   ActionItem[]
+  insights      MeetingInsight[]
+  notifications Notification[]
+  comments      Comment[]
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  @@map("meetings")
+}
+
+model Transcript {
+  id            String    @id @default(uuid())
+  content       String    @db.Text
+  segments      Json?     // Array of transcript segments with timestamps and speakers
+  summary       String?   @db.Text
+  keyTopics     String[]  // Array of key topics discussed
+  sentiment     Sentiment @default(NEUTRAL)
+  
+  // Relations
+  meetingId     String    @unique
+  meeting       Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@map("transcripts")
+}
+
+model Participant {
+  id            String    @id @default(uuid())
+  name          String
+  email         String?
+  role          String?   // host, participant, etc.
+  joinTime      DateTime?
+  leaveTime     DateTime?
+  
+  // Relations
+  meetingId     String
+  meeting       Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime  @default(now())
+  
+  @@map("participants")
+}
+
+model ActionItem {
+  id            String    @id @default(uuid())
+  content       String
+  assignee      String?   // Person assigned to the task
+  dueDate       DateTime?
+  status        ActionStatus @default(PENDING)
+  priority      Priority  @default(MEDIUM)
+  reminderSent  Boolean @default(false)
+  
+  // Relations
+  meetingId     String
+  meeting       Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@map("action_items")
+}
+
+model MeetingInsight {
+  id            String    @id @default(uuid())
+  type          InsightType
+  content       String    @db.Text
+  confidence    Float     // AI confidence score
+  
+  // Relations
+  meetingId     String
+  meeting       Meeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime  @default(now())
+  
+  @@map("meeting_insights")
+}
+
+model Subscription {
+  id            String    @id @default(uuid())
+  stripeSubscriptionId String @unique
+  stripeCustomerId     String
+  status        SubscriptionStatus
+  priceId       String
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  
+  // Relations
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@map("subscriptions")
+}
+
+// Enums
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum MeetingPlatform {
+  ZOOM
+  GOOGLE_MEET
+  TEAMS
+  UPLOAD
+  RECORDED
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TranscriptionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  MIXED
+}
+
+enum ActionStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum InsightType {
+  KEY_DECISION
+  RISK
+  OPPORTUNITY
+  FOLLOW_UP
+  TOPIC
+  SENTIMENT
+}
+
+enum SubscriptionStatus {
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  UNPAID
+  PAUSED
+}
+
+model Team {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  
+  // Relations
+  ownerId   String
+  owner     User     @relation("TeamOwner", fields: [ownerId], references: [id])
+  members   TeamMember[]
+  notifications Notification[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("teams")
+}
+
+model TeamMember {
+  id     String @id @default(uuid())
+  role   TeamRole @default(MEMBER)
+  
+  // Relations
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  timestamp Int?     // Timestamp in video/audio (seconds)
+  
+  // Relations
+  meetingId String
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId  String?  // For nested replies
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("comments")
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  type      String
+  title     String
+  message   String
+  data      Json?    // Additional metadata
+  read      Boolean  @default(false)
+  
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meetingId String?
+  meeting   Meeting? @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  teamId    String?
+  team      Team?    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("notifications")
+}
