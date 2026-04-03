@@ -10,6 +10,8 @@
   NEXT_TELEMETRY_DISABLED = "1"
   NEXT_PUBLIC_API_URL = "https://ai-meet-backend.vercel.app/api"
   NEXT_PUBLIC_SOCKET_URL = "https://ai-meet-backend.vercel.app"
+  NEXTAUTH_URL = "https://prismatic-rolypoly-72db6d.netlify.app"
+  NEXTAUTH_SECRET = "c53dd3d0b2ab26758269ec858baf57b4dbdce378b51ea6d7a6604a908755c127"
 
 [[headers]]
   for = "/*"
