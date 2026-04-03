@@ -755,7 +755,7 @@ export default function Home() {
               © 2026 MeetAI. All rights reserved.
             </p>
             <p className="text-xs text-muted-foreground/60">
-              Designed & Developed by <span className="font-medium text-primary">Yagnik Vadaliya</span>
+              Designed & Developed by <span className="font-medium text-primary">Yagnik Vadaliya.</span>
             </p>
             <div className="flex gap-4">
               {["Privacy", "Terms"].map((link) => (
